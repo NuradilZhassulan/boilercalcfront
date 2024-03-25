@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { fetchValues, fetchPrice, fetchCountExits, fetchExtraServices } from "./api/api";
+import {
+  fetchValues,
+  fetchPrice,
+  fetchCountExits,
+  fetchExtraServices,
+  fetchSystemDescriptions,
+} from "./api/api";
 import {
   Container,
   Box,
@@ -14,41 +20,40 @@ import {
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit"; // Импортируем иконку карандаша
 import SaveIcon from "@mui/icons-material/Save";
-import useMediaQuery from '@mui/material/useMediaQuery';
-import { useTheme } from '@mui/material/styles';
-import API_BASE_URL from '../config';
+import DeleteIcon from "@mui/icons-material/Delete";
+import useMediaQuery from "@mui/material/useMediaQuery";
+import { useTheme } from "@mui/material/styles";
+import API_BASE_URL from "../config";
+import { auth } from "../firebase-config";
+import { signOut } from "firebase/auth";
 
 const AdminPanel = () => {
-
   const theme = useTheme();
-  const isXs = useMediaQuery(theme.breakpoints.down('xs'));
-  const isSm = useMediaQuery(theme.breakpoints.down('sm'));
-  const isMd = useMediaQuery(theme.breakpoints.down('md'));
+  const isXs = useMediaQuery(theme.breakpoints.down("xs"));
+  const isSm = useMediaQuery(theme.breakpoints.down("sm"));
+  const isMd = useMediaQuery(theme.breakpoints.down("md"));
 
   let variant;
   let sizeDesc;
   let flexDirection;
   if (isXs) {
-    variant = 'h5';
-    sizeDesc = '0.5rem'
-    flexDirection = "column"
+    variant = "h5";
+    sizeDesc = "0.5rem";
+    flexDirection = "column";
   } else if (isSm) {
-    variant = 'h4'; 
-    sizeDesc = '0.7rem'
-    flexDirection = "column"
+    variant = "h4";
+    sizeDesc = "0.7rem";
+    flexDirection = "column";
   } else if (isMd) {
-    variant = 'h3';
-    sizeDesc = '1rem'
-    flexDirection = "column"
+    variant = "h3";
+    sizeDesc = "1rem";
+    flexDirection = "column";
   } else {
-    variant = 'h2';
-    sizeDesc = '1.2rem'
-    flexDirection = "row"
+    variant = "h2";
+    sizeDesc = "1.2rem";
+    flexDirection = "row";
   }
 
-  // const [values, setValues] = useState([]);
-  // const [newValue, setNewValue] = useState("");
-  
   const [boilerValues, setBoilerValues] = useState([]);
   const [boilerValue, setBoilerValue] = useState("");
   const [priceBoilerValue, setPriceBoilerValue] = useState("");
@@ -75,6 +80,11 @@ const AdminPanel = () => {
   const [editingExtraServiceId, setEditingExtraServiceId] = useState(null);
   const [editedExtraService, setEditedExtraService] = useState("");
   const [editedPriceExtraService, setEditedPriceExtraService] = useState(null);
+  const [systemDescriptions, setSystemDescriptions] = useState([]);
+  const [systemDescription, setSystemDescription] = useState("");
+  const [editingSystemDescriptionId, setEditingSystemDescriptionId] =
+    useState(null);
+  const [editedSystemDescription, setEditedSystemDescription] = useState("");
 
   useEffect(() => {
     const fetchData = async () => {
@@ -85,7 +95,9 @@ const AdminPanel = () => {
       const fetchedCountExits = await fetchCountExits();
       setCountExits(fetchedCountExits);
       const fetchedExtraServices = await fetchExtraServices();
-      setExtraServices(fetchedExtraServices)
+      setExtraServices(fetchedExtraServices);
+      const fetchedSystemDescriptions = await fetchSystemDescriptions();
+      setSystemDescriptions(fetchedSystemDescriptions);
     };
 
     fetchData();
@@ -131,9 +143,7 @@ const AdminPanel = () => {
         boilerValue: editedBoilerValue,
         priceBoilerValue: editedPriceBoilerValue,
       });
-      const updatedBoilerValues = await axios.get(
-        `${API_BASE_URL}/values`
-      );
+      const updatedBoilerValues = await axios.get(`${API_BASE_URL}/values`);
       setBoilerValues(updatedBoilerValues.data);
       setEditingBoilerValueId(null);
     } catch (error) {
@@ -141,35 +151,17 @@ const AdminPanel = () => {
     }
   };
 
-
-  // const addValue = async () => {
-  //   if (!newValue.trim()) {
-  //     // Проверяем, не пустое ли значение
-  //     alert("Пожалуйста, введите значение перед добавлением."); // Используйте более подходящий способ уведомления пользователя
-  //     return;
-  //   }
-
-  //   try {
-  //     await axios.post(`${API_BASE_URL}/values", { value: newValue });
-  //     const fetchedValues = await fetchValues(); // Повторно получаем значения
-  //     setValues(fetchedValues); // Обновляем состояние
-  //     setNewValue(""); // Очищаем поле ввода
-  //   } catch (error) {
-  //     console.error("Ошибка при добавлении значения:", error);
-  //     // Здесь можно добавить уведомление об ошибке для пользователя
-  //   }
-  // };
-
-  // const deleteValue = async (id) => {
-  //   try {
-  //     await axios.delete(`http://192.168.0.102:3000/api/values/${id}`);
-  //     const fetchedValues = await fetchValues(); // Повторно получаем значения
-  //     setValues(fetchedValues); // Обновляем состояние
-  //   } catch (error) {
-  //     console.error("Ошибка при удалении значения:", error);
-  //     // Здесь можно добавить уведомление об ошибке для пользователя
-  //   }
-  // };
+  const handleDeleteBoilerValue = async (id) => {
+    try {
+      await axios.delete(`${API_BASE_URL}/values/${id}`);
+      const updatedBoilerValues = boilerValues.filter(
+        (boilerValue) => boilerValue._id !== id
+      );
+      setBoilerValues(updatedBoilerValues);
+    } catch (error) {
+      console.error("Ошибка при удалении бойлера:", error);
+    }
+  };
 
   const handleSubmit = async (event) => {
     if (!power1.trim() && !price.trim()) {
@@ -224,6 +216,16 @@ const AdminPanel = () => {
     }
   };
 
+  const handleDeletePrice = async (id) => {
+    try {
+      await axios.delete(`${API_BASE_URL}/prices/${id}`);
+      const updatedPrices = prices.filter((price) => price._id !== id);
+      setPrices(updatedPrices);
+    } catch (error) {
+      console.error("Ошибка при удалении цены:", error);
+    }
+  };
+
   const handleSubmitCountExit = async (event) => {
     if (!countExit.trim() && !priceCountExit.trim()) {
       // Проверяем, не пустое ли значение
@@ -264,9 +266,7 @@ const AdminPanel = () => {
         countExit: editedCountExit,
         priceCountExit: editedPriceCountExit,
       });
-      const updatedCountExits = await axios.get(
-        `${API_BASE_URL}/countExit`
-      );
+      const updatedCountExits = await axios.get(`${API_BASE_URL}/countExit`);
       setCountExits(updatedCountExits.data);
       setEditingCountExitId(null);
     } catch (error) {
@@ -274,6 +274,17 @@ const AdminPanel = () => {
     }
   };
 
+  const handleDeleteCountExit = async (id) => {
+    try {
+      await axios.delete(`${API_BASE_URL}/countExit/${id}`);
+      const updatedCountExits = countExits.filter(
+        (countExit) => countExit._id !== id
+      );
+      setCountExits(updatedCountExits);
+    } catch (error) {
+      console.error("Ошибка при удалении выхода:", error);
+    }
+  };
 
   const handleSubmitExtraService = async (event) => {
     if (!extraService.trim() && !priceExtraService.trim()) {
@@ -315,26 +326,132 @@ const AdminPanel = () => {
         nameExtraService: editedExtraService,
         priceExtraService: editedPriceExtraService,
       });
-      const updatedCountExits = await axios.get(
+      const updatedExtraServices = await axios.get(
         `${API_BASE_URL}/extraservices`
       );
-      setExtraServices(updatedCountExits.data);
+      setExtraServices(updatedExtraServices.data);
       setEditingExtraServiceId(null);
     } catch (error) {
       console.error("Ошибка при сохранении измененной цены:", error);
     }
   };
 
+  const handleDeleteExtraService = async (id) => {
+    try {
+      await axios.delete(`${API_BASE_URL}/extraservices/${id}`);
+      const updatedExtraServices = extraServices.filter(
+        (extraService) => extraService._id !== id
+      );
+      setExtraServices(updatedExtraServices);
+    } catch (error) {
+      console.error("Ошибка при удалении доп. услуги:", error);
+    }
+  };
 
+  const handleSubmitSystemDescription = async (event) => {
+    if (!systemDescription.trim()) {
+      // Проверяем, не пустое ли значение
+      alert("Пожалуйста, введите значение перед добавлением."); // Используйте более подходящий способ уведомления пользователя
+      return;
+    }
+
+    event.preventDefault();
+    try {
+      await axios.post(`${API_BASE_URL}/systemDescription`, {
+        systemDescription: systemDescription,
+      });
+      setSystemDescription("");
+      const fetchedSystemDescriptions = await fetchSystemDescriptions(); // Повторно получаем значения
+      setSystemDescriptions(fetchedSystemDescriptions);
+    } catch (error) {
+      console.error("Ошибка при добавлении описании:", error);
+    }
+  };
+
+  const handleEditClickSystemDescription = (systemDescription) => {
+    setEditingSystemDescriptionId(systemDescription._id);
+    setEditedSystemDescription(systemDescription.systemDescription);
+  };
+
+  const handleSaveClickSystemDescription = async (id) => {
+    if (!editedSystemDescription.trim()) {
+      // Проверяем, не пустое ли значение
+      alert("Пожалуйста, введите значение перед добавлением."); // Используйте более подходящий способ уведомления пользователя
+      return;
+    }
+
+    try {
+      await axios.put(`${API_BASE_URL}/systemDescription/${id}`, {
+        systemDescription: editedSystemDescription,
+      });
+      const updatedSystemDescriptions = await axios.get(
+        `${API_BASE_URL}/systemDescription`
+      );
+      setSystemDescriptions(updatedSystemDescriptions.data);
+      setEditingSystemDescriptionId(null);
+    } catch (error) {
+      console.error("Ошибка при сохранении измененной цены:", error);
+    }
+  };
+
+  const handleDeleteSystemDescription = async (id) => {
+    try {
+      await axios.delete(`${API_BASE_URL}/systemDescription/${id}`);
+      const updatedSystemDescriptions = systemDescriptions.filter(
+        (systemDescription) => systemDescription._id !== id
+      );
+      setSystemDescriptions(updatedSystemDescriptions);
+    } catch (error) {
+      console.error("Ошибка при удалении доп. услуги:", error);
+    }
+  };
+
+  const handleLogout = () => {
+    signOut(auth)
+      .then(() => {
+        // Выход успешно выполнен.
+        console.log("User signed out");
+        // setIsAuthenticated(false);
+      })
+      .catch((error) => {
+        // Произошла ошибка при попытке выхода.
+        console.error("Sign out error", error);
+      });
+  };
 
   return (
     <Container spacing={2}>
-      <Box sx={{margin: "20px 0"}}>
+      <Box
+        sx={{
+          margin: "20px 0",
+          display: "flex",
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
         <Typography textAlign="center">
           Добавлять/Удалять/Редактировать
         </Typography>
+        <Button
+          type="submit"
+          variant="contained"
+          sx={{ mt: 3, mb: 2 }}
+          onClick={handleLogout}
+        >
+          Logout
+        </Button>
       </Box>
-      <Box sx={{ display: "flex", justifyContent: "space-between", flexDirection: {flexDirection}, boxShadow: '0px 0px 6px rgba(0, 0, 0, 0.15)', padding: "20px", margin: "40px 0" }}>
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          flexDirection: { flexDirection },
+          boxShadow: "0px 0px 6px rgba(0, 0, 0, 0.15)",
+          padding: "20px",
+          margin: "40px 0",
+        }}
+      >
         <Box
           component="form"
           onSubmit={handleSubmitBoilerValue}
@@ -394,13 +511,22 @@ const AdminPanel = () => {
                     <TextField
                       size="small"
                       value={editedPriceBoilerValue}
-                      onChange={(e) => setEditedPriceBoilerValue(e.target.value)}
+                      onChange={(e) =>
+                        setEditedPriceBoilerValue(e.target.value)
+                      }
                       style={{ marginRight: "10px" }}
                     />
                     <IconButton
-                      onClick={() => handleSaveClickBoilerValue(boilerValue._id)}
+                      onClick={() =>
+                        handleSaveClickBoilerValue(boilerValue._id)
+                      }
                     >
                       <SaveIcon />
+                    </IconButton>
+                    <IconButton
+                      onClick={() => handleDeleteBoilerValue(boilerValue._id)}
+                    >
+                      <DeleteIcon />
                     </IconButton>
                   </>
                 ) : (
@@ -420,7 +546,16 @@ const AdminPanel = () => {
           </List>
         </Box>
       </Box>
-      <Box sx={{ display: "flex", justifyContent: "space-between", flexDirection: {flexDirection}, boxShadow: '0px 0px 6px rgba(0, 0, 0, 0.15)', padding: "20px", margin: "40px 0" }}>
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          flexDirection: { flexDirection },
+          boxShadow: "0px 0px 6px rgba(0, 0, 0, 0.15)",
+          padding: "20px",
+          margin: "40px 0",
+        }}
+      >
         <Box
           component="form"
           onSubmit={handleSubmit}
@@ -501,6 +636,9 @@ const AdminPanel = () => {
                     <IconButton onClick={() => handleSaveClick(price._id)}>
                       <SaveIcon />
                     </IconButton>
+                    <IconButton onClick={() => handleDeletePrice(price._id)}>
+                      <DeleteIcon />
+                    </IconButton>
                   </>
                 ) : (
                   <>
@@ -517,7 +655,16 @@ const AdminPanel = () => {
           </List>
         </Box>
       </Box>
-      <Box sx={{ display: "flex", justifyContent: "space-between", flexDirection: {flexDirection}, boxShadow: '0px 0px 6px rgba(0, 0, 0, 0.15)', padding: "20px", margin: "40px 0" }}>
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          flexDirection: { flexDirection },
+          boxShadow: "0px 0px 6px rgba(0, 0, 0, 0.15)",
+          padding: "20px",
+          margin: "40px 0",
+        }}
+      >
         <Box
           component="form"
           onSubmit={handleSubmitCountExit}
@@ -585,6 +732,11 @@ const AdminPanel = () => {
                     >
                       <SaveIcon />
                     </IconButton>
+                    <IconButton
+                      onClick={() => handleDeleteCountExit(countExit._id)}
+                    >
+                      <DeleteIcon />
+                    </IconButton>
                   </>
                 ) : (
                   <>
@@ -604,9 +756,16 @@ const AdminPanel = () => {
         </Box>
       </Box>
 
-
-      
-      <Box sx={{ display: "flex", justifyContent: "space-between", flexDirection: {flexDirection}, boxShadow: '0px 0px 6px rgba(0, 0, 0, 0.15)', padding: "20px", margin: "40px 0" }}>
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          flexDirection: { flexDirection },
+          boxShadow: "0px 0px 6px rgba(0, 0, 0, 0.15)",
+          padding: "20px",
+          margin: "40px 0",
+        }}
+      >
         <Box
           component="form"
           onSubmit={handleSubmitExtraService}
@@ -666,13 +825,22 @@ const AdminPanel = () => {
                     <TextField
                       size="small"
                       value={editedPriceExtraService}
-                      onChange={(e) => setEditedPriceExtraService(e.target.value)}
+                      onChange={(e) =>
+                        setEditedPriceExtraService(e.target.value)
+                      }
                       style={{ marginRight: "10px" }}
                     />
                     <IconButton
-                      onClick={() => handleSaveClickExtraService(extraService._id)}
+                      onClick={() =>
+                        handleSaveClickExtraService(extraService._id)
+                      }
                     >
                       <SaveIcon />
+                    </IconButton>
+                    <IconButton
+                      onClick={() => handleDeleteExtraService(extraService._id)}
+                    >
+                      <DeleteIcon />
                     </IconButton>
                   </>
                 ) : (
@@ -682,6 +850,98 @@ const AdminPanel = () => {
                     />
                     <IconButton
                       onClick={() => handleEditClickExtraService(extraService)}
+                    >
+                      <EditIcon />
+                    </IconButton>
+                  </>
+                )}
+              </ListItem>
+            ))}
+          </List>
+        </Box>
+      </Box>
+
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          flexDirection: { flexDirection },
+          boxShadow: "0px 0px 6px rgba(0, 0, 0, 0.15)",
+          padding: "20px",
+          margin: "40px 0",
+        }}
+      >
+        <Box
+          component="form"
+          onSubmit={handleSubmitSystemDescription}
+          noValidate
+          sx={{ mt: 1, maxWidth: "400px" }}
+        >
+          <TextField
+            margin="normal"
+            required
+            fullWidth
+            id="systemDescription"
+            label="введите описание системы"
+            name="systemDescription"
+            value={systemDescription}
+            onChange={(e) => setSystemDescription(e.target.value)}
+          />
+          <Button
+            type="submit"
+            fullWidth
+            variant="contained"
+            sx={{ mt: 3, mb: 2 }}
+          >
+            Добавить описание системы
+          </Button>
+        </Box>
+
+        <Box>
+          <List>
+            {systemDescriptions?.map((systemDescription) => (
+              <ListItem
+                key={systemDescription._id}
+                sx={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                {editingSystemDescriptionId === systemDescription._id ? (
+                  <>
+                    <TextField
+                      size="small"
+                      value={editedSystemDescription}
+                      onChange={(e) =>
+                        setEditedSystemDescription(e.target.value)
+                      }
+                      style={{ marginRight: "10px" }}
+                    />
+                    <IconButton
+                      onClick={() =>
+                        handleSaveClickSystemDescription(systemDescription._id)
+                      }
+                    >
+                      <SaveIcon />
+                    </IconButton>
+                    <IconButton
+                      onClick={() =>
+                        handleDeleteSystemDescription(systemDescription._id)
+                      }
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </>
+                ) : (
+                  <>
+                    <ListItemText
+                      primary={`Описание: ${systemDescription.systemDescription}`}
+                    />
+                    <IconButton
+                      onClick={() =>
+                        handleEditClickSystemDescription(systemDescription)
+                      }
                     >
                       <EditIcon />
                     </IconButton>

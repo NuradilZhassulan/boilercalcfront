@@ -1,5 +1,5 @@
 import axios from "axios";
-import API_BASE_URL from '../../config';
+import API_BASE_URL from "../../config";
 
 export const fetchValues = async () => {
   try {
@@ -34,6 +34,16 @@ export const fetchCountExits = async () => {
 export const fetchExtraServices = async () => {
   try {
     const response = await axios.get(`${API_BASE_URL}/extraservices`);
+    return response.data;
+  } catch (error) {
+    console.error("Ошибка при получении данных:", error);
+    return [];
+  }
+};
+
+export const fetchSystemDescriptions = async () => {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/systemDescription`);
     return response.data;
   } catch (error) {
     console.error("Ошибка при получении данных:", error);
