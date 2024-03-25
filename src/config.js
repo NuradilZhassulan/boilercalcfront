@@ -1,2 +1,2 @@
-const API_BASE_URL = "https://shrouded-taiga-77918-13b71f578731.herokuapp.com/api";
+const API_BASE_URL = "";
 export default API_BASE_URL;
